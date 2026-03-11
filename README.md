@@ -1,4 +1,4 @@
-# Product Catalog
+# Python React CSV Product Catalog
 
 A full-stack application for uploading CSV files, converting product prices to multiple currencies, and browsing with filters.
 
