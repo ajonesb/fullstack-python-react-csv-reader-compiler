@@ -1,0 +1,70 @@
+name: Create New Repository with Same Contents
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  process-issue:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Clone the original repository using Personal Access Token
+      - name: Clone Original Repository
+        env:
+          GITHUB_PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          git clone --bare https://$GITHUB_PAT@github.com/flatirons-hiring/rails_node_test.git
+          cd rails_node_test.git
+          git bundle create repo.bundle --all
+
+      # Create a new repository in the organization
+      - name: Create New Repository
+        id: create-repo
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          script: |
+            const username = context.payload.issue.body.trim(); // GitHub username from the issue body
+            const newRepoName = `rails_node_test_${username}`;
+            const response = await github.rest.repos.createInOrg({
+              org: "flatirons-hiring",
+              name: newRepoName,
+              private: true,
+            });
+            core.setOutput("newRepoName", newRepoName);
+            core.setOutput("newRepoCloneUrl", response.data.clone_url); // This URL already includes https://
+            core.setOutput("newRepoHtmlUrl", response.data.html_url);
+
+      # Push contents to the new repository
+      - name: Push Contents to New Repository
+        env:
+          NEW_REPO_URL: ${{ steps.create-repo.outputs.newRepoCloneUrl }}
+          GITHUB_PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          cd rails_node_test.git
+          git remote add new-origin https://$GITHUB_PAT@${NEW_REPO_URL#https://}
+          git push --mirror new-origin
+
+      # Add user as a collaborator to the new repository
+      - name: Add Collaborator
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          script: |
+            const username = context.payload.issue.body.trim(); // GitHub username from the issue body
+            const newRepoName = "${{ steps.create-repo.outputs.newRepoName }}"; // Repository name
+
+            await github.rest.repos.addCollaborator({
+              owner: "flatirons-hiring",
+              repo: newRepoName,
+              username: username,
+              permission: "push", // Options: pull, triage, push, maintain, admin
+            });
+
+            console.log(`User ${username} added as a collaborator to ${newRepoName}`);
+
+      # Output New Repository URL
+      - name: Display New Repository
+        run: |
+          echo "New Repository URL: ${{ steps.create-repo.outputs.newRepoHtmlUrl }}"
