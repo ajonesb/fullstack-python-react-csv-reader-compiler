@@ -1,34 +1,104 @@
-# Flatirons Full-Stack Developer Coding Test
+# Product Catalog
 
-Be sure to read **all** of this document carefully, and follow the guidelines within.
+A full-stack application for uploading CSV files, converting product prices to multiple currencies, and browsing with filters.
 
-## Context
+## Quick Start
 
-Implement a full-stack web or mobile application that can upload, process, and store into a database the following CSV filem which contains a list of products. An example CSV file is located in data.csv in this repo.
+### Prerequisites
+- Node.js v18+
+- PostgreSQL running locally
 
-## Technology Choice
-1. **Backend**: Ruby on Rails, NestJS, .NET, or Python (choose the one relevant to your hiring role)
-2. **Frontend**:  
-   - **Web**: React or Next.js + React  
-   - **Mobile**: React Native, Flutter, or Swift (depending on the applied role)
+### Setup Database
 
-## Requirements - Backend
+```bash
+# Set PostgreSQL password
+sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres';"
 
-1. The products should be stored along with multiple exchange rates at the time of the upload utilizing this [API](https://github.com/fawazahmed0/exchange-api) (include at least 5 currencies). All product fields are required and must be present.
-2. Implement an endpoint that returns all the processed rows of product data along with the available currency conversions stored at the time of the upload. This endpoint should support filtering and sorting based on the name, price, and expiration fields
-4. The application should support CSV files with up to 200k rows, but easily scale to support more.
+# Create database
+PGPASSWORD=postgres psql -U postgres -h localhost -c "CREATE DATABASE products;"
+```
 
-## Requirements - Frontend
-1. The front-end should display a file upload input that allows the user to select a CSV file from their device.
-2. While the file is uploading and being processed, there should be a loading indicator displaying progress of the upload.
-3. Once the file uploads, a success message should display and you should be able to browse a table of the uploaded products. 
+### Install & Run
 
-## Submission
+```bash
+# Install dependencies
+npm install
+npm run install:all
 
-1. Create a branch and send a Pull Request into main when you are done. All code must be in this repo as a monorepo. Please do not put your solutions in a public repository!
-2. In the pull request, please include a short video walk-through (< 5 minutes) of your code and the experience you built. Also, describe improvement opportunities. [Vidyard](https://www.vidyard.com/chrome-extension-screen-recording/?utm_source=google-ads&utm_medium=cpc&utm_campaign=ChromeExtensionScreenRecord&utm_content=Extention_ChromeExt&utm_term=computer%20screen%20recorder%20free_b&gclid=Cj0KCQiA0eOPBhCGARIsAFIwTs4sn5e2WT7CGOsil0csKejSIthegolcNF2hVsixwJIOXI1zKWW8eO4aAgoVEALw_wcB) is a good choice.
-3. [Fill out this form with a link to your Pull Request](https://share.hsforms.com/1U_u8KkLWS6edbYxOoP64Dwse3g0). 
+# Configure environment
+# Backend: backend/.env
+NODE_ENV=development
+BACKEND_PORT=3001
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/products
+FRONTEND_URL=http://localhost:3000
 
-## Questions
+# Frontend: frontend/.env
+NEXT_PUBLIC_API_URL=http://localhost:3001
 
-If you have any questions, just create a new issue in this repo and we will respond and get back to you quickly.
+# Start both (backend + frontend)
+npm run dev
+
+# Or separately:
+# npm run dev:backend
+# npm run dev:frontend
+```
+
+Visit: `http://localhost:3000`
+
+## How It Works
+
+### Upload CSV
+1. Click "Choose File" and select a CSV with: `name`, `price`, `expirationDate`
+2. Click "Upload CSV"
+3. A progress bar tracks the upload; backend streams the file from disk, converts prices to EUR/GBP/JPY/CAD/AUD
+4. Products appear in the table
+
+Supports comma, semicolon, and tab-delimited CSVs. Invalid rows are skipped; the upload still succeeds. Re-uploading a file appends new rows (no de-duplication).
+
+### Browse & Filter
+- Search by product name
+- Filter by price range and expiration dates
+- Sort by name, price, or expiration date
+
+## API Endpoints
+
+**POST** `/api/upload`
+- Upload CSV file
+- Returns: `{ message: "Upload processed successfully" }`
+
+**GET** `/api/products`
+- Query parameters (all optional):
+  - `name` - Search by product name
+  - `minPrice`, `maxPrice` - Price range (USD)
+  - `minExpiration`, `maxExpiration` - Date range (YYYY-MM-DD)
+  - `sortBy` - `name`, `price`, or `expirationDate`
+  - `sortOrder` - `asc` or `desc`
+
+## Example CSV
+
+```csv
+name,price,expirationDate
+Apple,0.50,2025-12-31
+Banana,0.30,2025-11-15
+```
+
+## Troubleshooting
+
+**Database connection error?**
+- Ensure PostgreSQL is running: `psql -U postgres -h localhost -c "SELECT 1;"`
+- Check DATABASE_URL in backend/.env
+
+**Products not showing after upload?**
+- Check backend logs for errors
+- Refresh the browser
+
+**Port already in use?**
+- Backend default: 3001
+- Frontend default: 3000
+- Change in .env files if needed
+
+
+**Note on duplicates:** Re-uploading the same CSV appends new rows (no automatic de-duplication). In production this could use unique constraints or upsert logic.
+
+## Demo
+view presentation demo here : https://share.vidyard.com/watch/sq3uTwhpbvhfDJbxk4PkBp
